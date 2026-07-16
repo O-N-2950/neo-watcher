@@ -1,0 +1,115 @@
+# Monitoring NEO — exécuté sur l'infra GitHub (contourne l'egress restreint de Claude Code)
+# Toutes les heures : vérifie 11 URLs ; crée/maj ALERT-NEO.md si un site est DOWN,
+# supprime ALERT-NEO.md quand tout est revenu UP. — 08.07.2026
+name: Monitoring NEO
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check des 11 sites
+        id: check
+        run: |
+          set -uo pipefail
+          SITES=(
+            "winwin|https://www.winwin.swiss/api/health"
+            "boom-contact|https://www.boom.contact/health"
+            "star-mix|https://www.star-mix.ch/health"
+            "peps|https://www.peps.digital/api/health"
+            "devispro|https://www.devispro.ch"
+            "horlogis|https://www.horlogis.ch/api/version"
+            "soluris|https://soluris-web-production.up.railway.app/health"
+            "tournepage|https://www.tournepage.ch/api/health"
+            "pepsstart|https://www.pepsstart.ch"
+            "neukomm-group|https://www.neukomm-group.ch"
+            "pepssolutions|https://www.pepssolutions.digital"
+          )
+
+          DOWN_LIST=""
+          REPORT=""
+          for entry in "${SITES[@]}"; do
+            name="${entry%%|*}"
+            url="${entry##*|}"
+            out=$(curl -s -o /dev/null -L -m 15 -w '%{http_code} %{time_total}' "$url" || echo "000 15.000")
+            code="${out%% *}"
+            time="${out##* }"
+            if [[ "$code" =~ ^[23] ]]; then
+              status="UP"
+            else
+              status="DOWN"
+              DOWN_LIST="${DOWN_LIST}${name} (HTTP ${code}) — ${url}\n"
+            fi
+            REPORT="${REPORT}${name}: HTTP ${code} en ${time}s [${status}]\n"
+            echo "  ${name}: HTTP ${code} (${time}s) ${status}"
+          done
+
+          {
+            echo "down_list<<EOR"
+            printf "%b" "$DOWN_LIST"
+            echo "EOR"
+            echo "report<<EOR"
+            printf "%b" "$REPORT"
+            echo "EOR"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$DOWN_LIST" ]; then
+            echo "has_down=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_down=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Créer/mettre à jour ALERT-NEO.md (sites DOWN)
+        if: steps.check.outputs.has_down == 'true'
+        run: |
+          set -euo pipefail
+          {
+            echo "# 🚨 ALERTE MONITORING NEO"
+            echo ""
+            echo "**Dernier check : $(date -u '+%Y-%m-%d %H:%M:%S') UTC**"
+            echo ""
+            echo "## Sites DOWN"
+            echo ""
+            printf "%b" "${{ steps.check.outputs.down_list }}" | sed 's/^/- /'
+            echo ""
+            echo "## Rapport complet"
+            echo ""
+            echo '```'
+            printf "%b" "${{ steps.check.outputs.report }}"
+            echo '```'
+          } > ALERT-NEO.md
+
+          DOWN_NAMES=$(printf "%b" "${{ steps.check.outputs.down_list }}" | cut -d' ' -f1 | tr '\n' ' ' | sed 's/ *$//')
+          git config user.name "neo-monitoring[bot]"
+          git config user.email "monitoring@users.noreply.github.com"
+          git add ALERT-NEO.md
+          if ! git diff --staged --quiet; then
+            git commit -m "alert: ${DOWN_NAMES} DOWN"
+            git push
+          else
+            echo "ALERT-NEO.md inchangé — pas de commit."
+          fi
+
+      - name: Supprimer ALERT-NEO.md (tout est revenu UP)
+        if: steps.check.outputs.has_down == 'false'
+        run: |
+          set -euo pipefail
+          if [ -f ALERT-NEO.md ]; then
+            git config user.name "neo-monitoring[bot]"
+            git config user.email "monitoring@users.noreply.github.com"
+            git rm ALERT-NEO.md
+            git commit -m "fix: all sites back UP"
+            git push
+          else
+            echo "Tous les sites OK — rien à faire."
+          fi
