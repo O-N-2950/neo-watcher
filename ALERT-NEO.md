@@ -1,6 +1,6 @@
 # 🚨 ALERTE MONITORING NEO
 
-**Dernier check : 2026-07-24 12:12:22 UTC**
+**Dernier check : 2026-07-24 14:44:13 UTC**
 
 ## Sites DOWN
 
@@ -10,14 +10,14 @@
 ## Rapport complet
 
 ```
-winwin: HTTP 200 en 0.587619s [UP]
-boom-contact: HTTP 200 en 0.471809s [UP]
-star-mix: HTTP 200 en 0.319262s [UP]
-peps: HTTP 200 en 0.338350s [UP]
-devispro: HTTP 200 en 0.450986s [UP]
-horlogis: HTTP 200 en 1.110315s [UP]
-soluris: HTTP 200 en 0.192493s [UP]
-tournepage: HTTP 200 en 0.516752s [UP]
+winwin: HTTP 200 en 0.479324s [UP]
+boom-contact: HTTP 200 en 0.699171s [UP]
+star-mix: HTTP 200 en 0.527888s [UP]
+peps: HTTP 200 en 0.517884s [UP]
+devispro: HTTP 200 en 0.352879s [UP]
+horlogis: HTTP 200 en 1.145100s [UP]
+soluris: HTTP 200 en 0.189340s [UP]
+tournepage: HTTP 200 en 1.562834s [UP]
 pepsstart: HTTP 000 en 15.000s [DOWN]
 neukomm-group: HTTP 000 en 15.000s [DOWN]
 pepssolutions: HTTP 000 en 15.000s [DOWN]```
